@@ -268,7 +268,7 @@ func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.
 				atomic.AddInt64(&ts.TracesDropped, 1)
 				atomic.AddInt64(&ts.SpansDropped, int64(spans))
 
-				log.Errorf("dropping trace; reason: rate-limited")
+				log.Errorf("Dropping trace; reason: rate-limited")
 			}
 		}
 	}
@@ -280,7 +280,7 @@ func (r *HTTPReceiver) handleServices(v Version, w http.ResponseWriter, req *htt
 
 	mediaType := getMediaType(req)
 	if err := decodeReceiverPayload(req.Body, &servicesMeta, v, mediaType); err != nil {
-		log.Errorf("cannot decode %s services payload: %v", v, err)
+		log.Errorf("Cannot decode %s services payload: %v", v, err)
 		httpDecodingError(err, []string{tagServiceHandler, fmt.Sprintf("v:%s", v)}, w)
 		return
 	}
@@ -392,7 +392,7 @@ func getTraces(v Version, w http.ResponseWriter, req *http.Request) (pb.Traces, 
 		// in v01 we actually get spans that we have to transform in traces
 		var spans []pb.Span
 		if err := json.NewDecoder(req.Body).Decode(&spans); err != nil {
-			log.Errorf("cannot decode %s traces payload: %v", v, err)
+			log.Errorf("Cannot decode %s traces payload: %v", v, err)
 			httpDecodingError(err, []string{tagTraceHandler, fmt.Sprintf("v:%s", v)}, w)
 			return nil, false
 		}
@@ -403,7 +403,7 @@ func getTraces(v Version, w http.ResponseWriter, req *http.Request) (pb.Traces, 
 		fallthrough
 	case v04:
 		if err := decodeReceiverPayload(req.Body, &traces, v, mediaType); err != nil {
-			log.Errorf("cannot decode %s traces payload: %v", v, err)
+			log.Errorf("Cannot decode %s traces payload: %v", v, err)
 			httpDecodingError(err, []string{tagTraceHandler, fmt.Sprintf("v:%s", v)}, w)
 			return nil, false
 		}
@@ -448,7 +448,7 @@ func tracesFromSpans(spans []pb.Span) pb.Traces {
 func getMediaType(req *http.Request) string {
 	mt, _, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
 	if err != nil {
-		log.Debugf(`error parsing media type: %v, assuming "application/json"`, err)
+		log.Debugf(`Error parsing media type: %v, assuming "application/json"`, err)
 		return "application/json"
 	}
 	return mt

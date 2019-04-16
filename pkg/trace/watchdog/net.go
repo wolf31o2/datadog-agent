@@ -25,7 +25,7 @@ func (pi *CurrentInfo) Net() NetInfo {
 
 	connections, err := net.ConnectionsPid("tcp", int32(os.Getpid()))
 	if err != nil {
-		log.Debugf("unable to get Net connections: %v", err)
+		log.Debugf("Unable to get Net connections: %v", err)
 		return pi.lastNet
 	}
 

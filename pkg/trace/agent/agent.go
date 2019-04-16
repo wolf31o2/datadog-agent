@@ -142,7 +142,7 @@ func (a *Agent) loop() {
 		case <-ticker.C:
 			a.watchdog()
 		case <-a.ctx.Done():
-			log.Info("exiting")
+			log.Info("Exiting")
 			if err := a.Receiver.Stop(); err != nil {
 				log.Error(err)
 			}
@@ -164,7 +164,7 @@ func (a *Agent) loop() {
 // passes it downstream.
 func (a *Agent) Process(t pb.Trace) {
 	if len(t) == 0 {
-		log.Debugf("skipping received empty trace")
+		log.Debugf("Skipping received empty trace")
 		return
 	}
 
@@ -194,7 +194,7 @@ func (a *Agent) Process(t pb.Trace) {
 	atomic.AddInt64(stat, 1)
 
 	if !a.Blacklister.Allows(root) {
-		log.Debugf("trace rejected by blacklister. root: %v", root)
+		log.Debugf("Trace rejected by blacklister. root: %v", root)
 		atomic.AddInt64(&ts.TracesFiltered, 1)
 		atomic.AddInt64(&ts.SpansFiltered, int64(len(t)))
 		return
