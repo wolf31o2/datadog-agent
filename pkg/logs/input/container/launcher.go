@@ -25,7 +25,6 @@ import (
 // the containers running on the kubernetes cluster and matching the autodiscovery configuration.
 func NewLauncher(collectAll bool, sources *config.LogSources, services *service.Services, pipelineProvider pipeline.Provider, registry auditor.Registry) restart.Restartable {
 	// attempt to initialize a docker launcher
-	log.Info("Trying to initialize docker launcher")
 	launcher, err := docker.NewLauncher(sources, services, pipelineProvider, registry)
 	if err == nil {
 		log.Info("Docker launcher initialized")
@@ -34,7 +33,6 @@ func NewLauncher(collectAll bool, sources *config.LogSources, services *service.
 	log.Infof("Could not setup the docker launcher: %v", err)
 
 	// attempt to initialize a kubernetes launcher
-	log.Info("Trying to initialize kubernetes launcher")
 	kubernetesLauncher, err := kubernetes.NewLauncher(sources, services, collectAll)
 	if err == nil {
 		log.Info("Kubernetes launcher initialized")
