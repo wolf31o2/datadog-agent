@@ -94,7 +94,7 @@ func Run(ctx context.Context) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	agnt := NewAgent(ctx, cfg)
-	log.Infof("Trace-agent running on host %s", cfg.Hostname)
+	log.Infof("Trace agent running on host %s", cfg.Hostname)
 	agnt.Run()
 
 	// collect memory profile
