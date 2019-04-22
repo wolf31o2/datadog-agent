@@ -92,6 +92,7 @@ func TestQueuablePayloadSender_FlakyEndpoint(t *testing.T) {
 
 	// Make sure sender processed both payloads
 	syncBarrier <- nil
+	queuableSender.wg.Wait()
 
 	assert.Equal(0, queuableSender.NumQueuedPayloads(), "Expect no queued payloads")
 
@@ -102,6 +103,11 @@ func TestQueuablePayloadSender_FlakyEndpoint(t *testing.T) {
 	queuableSender.Send(payload3)
 	payload4 := randomPayload()
 	queuableSender.Send(payload4)
+
+	// wait for both requests to both be kicked off and completed
+	syncBarrier <- nil
+	queuableSender.wg.Wait()
+
 	// And retry once
 	testBackoffTimer.TriggerTick()
 	// And retry twice
@@ -132,6 +138,7 @@ func TestQueuablePayloadSender_FlakyEndpoint(t *testing.T) {
 
 	// Make sure sender processed previous payloads
 	syncBarrier <- nil
+	queuableSender.wg.Wait()
 
 	assert.Equal(0, queuableSender.NumQueuedPayloads(), "Expect no queued payloads")
 
@@ -197,6 +204,7 @@ func TestQueuablePayloadSender_MaxQueuedPayloads(t *testing.T) {
 
 	// Ensure previous payloads were processed
 	syncBarrier <- nil
+	queuableSender.wg.Wait()
 
 	// Then, when the endpoint finally works
 	flakyEndpoint.SetError(nil)
@@ -267,6 +275,7 @@ func TestQueuablePayloadSender_MaxQueuedBytes(t *testing.T) {
 
 	// Ensure previous payloads were processed
 	syncBarrier <- nil
+	queuableSender.wg.Wait()
 
 	// Then, when the endpoint finally works
 	flakyEndpoint.SetError(nil)
@@ -328,6 +337,7 @@ func TestQueuablePayloadSender_DropBigPayloadsOnRetry(t *testing.T) {
 
 	// Ensure previous payloads were processed
 	syncBarrier <- nil
+	queuableSender.wg.Wait()
 
 	// Then, when the endpoint finally works
 	flakyEndpoint.SetError(nil)
