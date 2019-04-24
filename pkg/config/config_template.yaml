@@ -722,6 +722,13 @@ api_key:
 # Polling frequency in seconds of the agent to the kubelet "/pods" endpoint
 # kubelet_cache_pods_duration: 5
 #
+
+## @param kubelet_cache_pods_duration - integer - optional - default: 5
+## Polling frequency in seconds of the pod watcher to detect new pods/containers (affected by kubelet_cache_pods_duration).
+#
+# kubelet_listener_polling_interval: 5
+
+#
 # As pods created by cronjobs are not removed by default, this can lead to podlists
 # growing unbounded. To avoid an impact on its memory usage, the agent ignores by
 # default all pods that exited more than 15 minutes (900 seconds) ago. This filtering
