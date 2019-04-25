@@ -109,13 +109,7 @@ func (c *testPayloadSender) Run() {
 	for {
 		select {
 		case payload := <-c.in:
-			stats, err := c.doSend(payload)
-
-			if err != nil {
-				c.notifyError(payload, err, stats)
-			} else {
-				c.notifySuccess(payload, stats)
-			}
+			c.doSend(payload, nil)
 		case <-c.exit:
 			return
 		}

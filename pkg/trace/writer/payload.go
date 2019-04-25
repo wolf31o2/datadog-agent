@@ -128,20 +128,36 @@ func (s *queuableSender) Monitor() <-chan monitorEvent {
 }
 
 // send will send the provided payload without any checks.
-func (s *queuableSender) doSend(payload *payload) (sendStats, error) {
-	if payload == nil {
-		return sendStats{}, nil
-	}
-
+func (s *queuableSender) doSend(payload *payload, queueItem *list.Element) {
 	startFlush := time.Now()
 	err := s.endpoint.write(payload)
-
-	sendStats := sendStats{
+	stats := sendStats{
 		sendTime: time.Since(startFlush),
 		host:     s.endpoint.baseURL(),
 	}
-
-	return sendStats, err
+	if err != nil {
+		if _, ok := err.(*retriableError); ok {
+			retryNum, delay := s.backoffTimer.ScheduleRetry(err)
+			log.Debugf("Got retriable error. Retrying flush later: retry=%d, delay=%s, err=%v", retryNum, delay, err)
+			s.notifyRetry(payload, err, delay, retryNum)
+			if queueItem == nil {
+				if err := s.enqueue(payload); err != nil {
+					log.Debugf("Error while sending or queueing payload. err=%v", err)
+					s.notifyError(payload, err)
+				}
+			}
+			return
+		}
+		log.Debugf("Error while sending or queueing payload. err=%v", err)
+		s.notifyError(payload, err)
+	}
+	if queueItem != nil {
+		s.removeQueuedPayload(queueItem)
+	}
+	if err == nil {
+		log.Tracef("Successfully sent payload: %v", payload)
+		s.notifySuccess(payload, stats)
+	}
 }
 
 // Start asynchronously starts this QueueablePayloadSender.
@@ -159,10 +175,17 @@ func (s *queuableSender) Run() {
 	for {
 		select {
 		case payload := <-s.in:
-			if stats, err := s.sendOrQueue(payload); err != nil {
-				log.Debugf("Error while sending or queueing payload. err=%v", err)
-				s.notifyError(payload, err, stats)
+			if payload == nil {
+				continue
 			}
+			if s.queuing {
+				if err := s.enqueue(payload); err != nil {
+					log.Debugf("Error while queuing payload: %v", err)
+					s.notifyError(payload, err)
+				}
+				continue
+			}
+			go s.doSend(payload, nil)
 		case <-s.backoffTimer.ReceiveTick():
 			s.flushQueue()
 		case <-s.syncBarrier:
@@ -182,35 +205,8 @@ func (s *queuableSender) NumQueuedPayloads() int {
 	return s.queuedPayloads.Len()
 }
 
-// sendOrQueue sends the provided payload or queues it if this sender is currently queueing payloads.
-func (s *queuableSender) sendOrQueue(payload *payload) (sendStats, error) {
-	var stats sendStats
-
-	if payload == nil {
-		return stats, nil
-	}
-
-	var err error
-
-	if !s.queuing {
-		if stats, err = s.doSend(payload); err != nil {
-			if _, ok := err.(*retriableError); ok {
-				// If error is retriable, start a queue and schedule a retry
-				retryNum, delay := s.backoffTimer.ScheduleRetry(err)
-				log.Debugf("Got retriable error. Starting a queue. delay=%s, err=%v", delay, err)
-				s.notifyRetry(payload, err, delay, retryNum)
-				return stats, s.enqueue(payload)
-			}
-		} else {
-			// If success, notify
-			log.Tracef("Successfully sent direct payload: %v", payload)
-			s.notifySuccess(payload, stats)
-		}
-	} else {
-		return stats, s.enqueue(payload)
-	}
-
-	return stats, err
+// trySend sends the provided payload or queues it if this sender is currently queueing payloads.
+func (s *queuableSender) trySend(payload *payload) {
 }
 
 func (s *queuableSender) enqueue(payload *payload) error {
@@ -260,33 +256,9 @@ func (s *queuableSender) flushQueue() error {
 	var next *list.Element
 	for e := s.queuedPayloads.Front(); e != nil; e = next {
 		payload := e.Value.(*payload)
+		next = e.Next()
 
-		var err error
-		var stats sendStats
-
-		if stats, err = s.doSend(payload); err != nil {
-			if _, ok := err.(*retriableError); ok {
-				// If send failed due to a retriable error, retry flush later
-				retryNum, delay := s.backoffTimer.ScheduleRetry(err)
-				log.Debugf("Got retriable error. Retrying flush later: retry=%d, delay=%s, err=%v",
-					retryNum, delay, err)
-				s.notifyRetry(payload, err, delay, retryNum)
-				// Don't try to send following. We'll flush all later.
-				return err
-			}
-
-			// If send failed due to non-retriable error, notify error and drop it
-			log.Debugf("Dropping payload due to non-retriable error: err=%v, payload=%v", err, payload)
-			s.notifyError(payload, err, stats)
-			next = s.removeQueuedPayload(e)
-			// Try sending next ones
-			continue
-		}
-
-		// If successful, remove payload from queue
-		log.Tracef("Successfully sent a queued payload: %v", payload)
-		s.notifySuccess(payload, stats)
-		next = s.removeQueuedPayload(e)
+		go s.doSend(payload, e)
 	}
 
 	s.queuing = false
@@ -295,12 +267,10 @@ func (s *queuableSender) flushQueue() error {
 	return nil
 }
 
-func (s *queuableSender) removeQueuedPayload(e *list.Element) *list.Element {
-	next := e.Next()
+func (s *queuableSender) removeQueuedPayload(e *list.Element) {
 	payload := e.Value.(*payload)
 	s.currentQueuedSize -= int64(len(payload.bytes))
 	s.queuedPayloads.Remove(e)
-	return next
 }
 
 // Discard those payloads that are older than max age.
@@ -314,6 +284,7 @@ func (s *queuableSender) discardOldPayloads() {
 
 	for e := s.queuedPayloads.Front(); e != nil; e = next {
 		payload := e.Value.(*payload)
+		next = e.Next()
 
 		age := time.Since(payload.creationDate)
 
@@ -324,8 +295,8 @@ func (s *queuableSender) discardOldPayloads() {
 
 		err := fmt.Errorf("payload is older than max age: age=%v, max age=%v", age, s.conf.MaxAge)
 		log.Tracef("Discarding payload: err=%v, payload=%v", err, payload)
-		s.notifyError(payload, err, sendStats{})
-		next = s.removeQueuedPayload(e)
+		s.notifyError(payload, err)
+		s.removeQueuedPayload(e)
 	}
 }
 
@@ -338,7 +309,7 @@ func (s *queuableSender) dropOldestPayload(reason string) (*payload, error) {
 	err := fmt.Errorf("payload dropped: %s", reason)
 	droppedPayload := s.queuedPayloads.Front().Value.(*payload)
 	s.removeQueuedPayload(s.queuedPayloads.Front())
-	s.notifyError(droppedPayload, err, sendStats{})
+	s.notifyError(droppedPayload, err)
 
 	return droppedPayload, nil
 }
@@ -351,7 +322,7 @@ func (s *queuableSender) notifySuccess(payload *payload, sendStats sendStats) {
 	})
 }
 
-func (s *queuableSender) notifyError(payload *payload, err error, sendStats sendStats) {
+func (s *queuableSender) notifyError(payload *payload, err error) {
 	s.sendEvent(&monitorEvent{
 		typ:     eventTypeFailure,
 		payload: payload,
