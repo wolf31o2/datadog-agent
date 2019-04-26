@@ -109,7 +109,7 @@ platforms:
     else
       size = sizes[idx % sizes.length]
     end
-    
+
     vm_username = ENV['VM_USERNAME'] ? ENV['VM_USERNAME'] : "datadog"
     vm_password = ENV['SERVER_PASSWORD']
     vm_hyperv_switch = ENV['KITCHEN_HYPERV_SWITCH'] ? ENV['KITCHEN_HYPERV_SWITCH'] : "public_eth"
@@ -155,8 +155,8 @@ suites:
 <%
   aptrepo = "http://apttesting.datad0g.com/"
   api_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-  yumrepo = "http://yumtesting.datad0g.com/pipeline-#{ENV['CI_PIPELINE_ID']}/x86_64/"
-  yumrepo_suse = "http://yumtesting.datad0g.com/suse/pipeline-#{ENV['CI_PIPELINE_ID']}/x86_64/"
+  yumrepo = "http://yumtesting.datad0g.com/pipeline-1273770/x86_64/"
+  yumrepo_suse = "http://yumtesting.datad0g.com/suse/pipeline-1273770/x86_64/"
   windows_agent_url = ENV['WINDOWS_AGENT_URL'] ? ENV['WINDOWS_AGENT_URL'] : "https://s3.amazonaws.com/#{ENV['WINDOWS_TESTING_S3_BUCKET']}/"
   dd_agent_config = {
     'agent6': true,
@@ -164,13 +164,13 @@ suites:
     'application_key': "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     'url': "https://app.datad0g.com",
     'aptrepo': aptrepo,
-    'aptrepo_dist': "pipeline-#{ENV['CI_PIPELINE_ID']}",
+    'aptrepo_dist': "pipeline-1273770",
     'yumrepo': yumrepo,
     'yumrepo_suse': yumrepo_suse,
     'agent6_aptrepo': "http://apttesting.datad0g.com/",
-    'agent6_aptrepo_dist': "pipeline-#{ENV['CI_PIPELINE_ID']}",
-    'agent6_yumrepo': "http://yumtesting.datad0g.com/pipeline-#{ENV['CI_PIPELINE_ID']}/x86_64/",
-    'agent6_yumrepo_suse': "http://yumtesting.datad0g.com/suse/pipeline-#{ENV['CI_PIPELINE_ID']}/x86_64/",
+    'agent6_aptrepo_dist': "pipeline-1273770",
+    'agent6_yumrepo': "http://yumtesting.datad0g.com/pipeline-1273770/x86_64/",
+    'agent6_yumrepo_suse': "http://yumtesting.datad0g.com/suse/pipeline-1273770/x86_64/",
     'windows_agent_url': windows_agent_url,
   }
 %>
@@ -197,21 +197,21 @@ suites:
         windows_agent_filename: "<%= ENV['WINDOWS_AGENT_FILE'] %>"
         <% end %>
         agent_install_options: >
-          TAGS=k1:v1,k2:v2 
-          HOSTNAME=dd-agent-installopts 
+          TAGS=k1:v1,k2:v2
+          HOSTNAME=dd-agent-installopts
           CMD_PORT=4999
-          PROXY_HOST=proxy.foo.com 
-          PROXY_PORT=1234 
-          PROXY_USER=puser 
-          PROXY_PASSWORD=ppass 
-          SITE=eu 
-          DD_URL=https://someurl.datadoghq.com 
+          PROXY_HOST=proxy.foo.com
+          PROXY_PORT=1234
+          PROXY_USER=puser
+          PROXY_PASSWORD=ppass
+          SITE=eu
+          DD_URL=https://someurl.datadoghq.com
           LOGS_DD_URL=https://logs.someurl.datadoghq.com
           PROCESS_DD_URL=https://process.someurl.datadoghq.com
           TRACE_DD_URL=https://trace.someurl.datadoghq.com
       dd-agent-rspec:
         skip_windows_signing_test: &skip_windows_signing_test <%= ENV['SKIP_SIGNATURE_TEST'] || false %>
-        
+
 
   - name: dd-agent-all-subservices
     run_list:
@@ -352,7 +352,7 @@ suites:
           APIKEY=<%= api_key %>
           APPLICATIONDATADIRECTORY=c:\altconfroot
           PROJECTLOCATION=c:\ddagent
-          
+
       dd-agent-rspec:
         skip_windows_signing_test: &skip_windows_signing_test <%= ENV['SKIP_SIGNATURE_TEST'] || false %>
         APPLICATIONDATADIRECTORY: c:\altconfroot
